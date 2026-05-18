@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String
+  name      String
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  talentProfile  TalentProfile?
+  academyProfile AcademyProfile?
+  clubProfile    ClubProfile?
+  agentProfile   AgentProfile?
+
+  uploadedVideos   Video[]    @relation("TalentVideos")
+  interests        Interest[] @relation("ViewerInterests")
+  dealsAsTalent    Deal[]     @relation("TalentDeals")
+  dealsAsClubAgent Deal[]     @relation("ClubAgentDeals")
+  messages         Message[]
+}
+
+model TalentProfile {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age           Int?
+  position      String?
+  nationality   String?
+  bio           String?
+  height        String?
+  weight        String?
+  preferredFoot String?
+  profileImage  String?
+}
+
+model AcademyProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String?
+  location String?
+  bio      String?
+  logo     String?
+  website  String?
+  founded  String?
+}
+
+model ClubProfile {
+  id      String  @id @default(cuid())
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name    String?
+  league  String?
+  country String?
+  bio     String?
+  logo    String?
+  website String?
+}
+
+model AgentProfile {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio           String?
+  licenseNumber String?
+  country       String?
+  agency        String?
+}
+
+model Video {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  videoUrl     String
+  thumbnailUrl String?
+  talentId     String
+  talent       User     @relation("TalentVideos", fields: [talentId], references: [id], onDelete: Cascade)
+  views        Int      @default(0)
+  duration     String?
+  tags         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  interests Interest[]
+  deals     Deal[]
+}
+
+model Interest {
+  id        String   @id @default(cuid())
+  viewerId  String
+  viewer    User     @relation("ViewerInterests", fields: [viewerId], references: [id], onDelete: Cascade)
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  status    String   @default("interested")
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([viewerId, videoId])
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  talentId    String
+  talent      User     @relation("TalentDeals", fields: [talentId], references: [id])
+  clubAgentId String
+  clubAgent   User     @relation("ClubAgentDeals", fields: [clubAgentId], references: [id])
+  videoId     String?
+  video       Video?   @relation(fields: [videoId], references: [id])
+  status      String   @default("pending")
+  dealType    String?
+  proposedFee String?
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  content   String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
