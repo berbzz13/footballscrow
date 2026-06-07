@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
     const tags = formData.get("tags") as string;
     const videoFile = formData.get("video") as File;
     const thumbnailFile = formData.get("thumbnail") as File | null;
+    const playerId = formData.get("playerId") as string | null; // <-- Grabs the player ID
 
     if (!title || !videoFile) {
       return NextResponse.json({ error: "Title and video are required" }, { status: 400 });
@@ -81,12 +82,14 @@ export async function POST(req: NextRequest) {
     const uploadsDir = path.join(process.cwd(), "public/uploads/videos");
     await mkdir(uploadsDir, { recursive: true });
 
+    // Handle Video File Upload
     const videoExt = videoFile.name.split(".").pop();
     const videoName = `${uuidv4()}.${videoExt}`;
     const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
     await writeFile(path.join(uploadsDir, videoName), videoBuffer);
     const videoUrl = `/uploads/videos/${videoName}`;
 
+    // Handle Optional Thumbnail Upload
     let thumbnailUrl = null;
     if (thumbnailFile) {
       const thumbDir = path.join(process.cwd(), "public/uploads/thumbnails");
@@ -98,16 +101,24 @@ export async function POST(req: NextRequest) {
       thumbnailUrl = `/uploads/thumbnails/${thumbName}`;
     }
 
-    const video = await prisma.video.create({
-      data: {
-        title,
-        description,
-        tags,
-        videoUrl,
-        thumbnailUrl,
-        talentId: session.userId,
-      },
-    });
+    // Determine who owns the video based on the role
+    const data: any = {
+      title,
+      description,
+      tags,
+      videoUrl,
+      thumbnailUrl,
+    };
+
+    if (session.role === "academy" && playerId) {
+      // It's an academy uploading for a roster player
+      data.playerId = playerId;
+    } else {
+      // It's an independent talent uploading for themselves
+      data.talentId = session.userId;
+    }
+
+    const video = await prisma.video.create({ data });
 
     return NextResponse.json({ video }, { status: 201 });
   } catch (err) {

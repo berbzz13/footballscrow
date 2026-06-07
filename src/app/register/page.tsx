@@ -1,61 +1,30 @@
 "use client";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Trophy, Users, Building2, UserCheck, GraduationCap } from "lucide-react";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
 
-const ROLES = [
-  {
-    id: "talent",
-    label: "Football Talent",
-    desc: "I'm a player looking to get discovered",
-    icon: <Trophy size={24} className="text-green-600" />,
-    color: "border-green-200 bg-green-50 hover:border-green-400",
-    selectedColor: "border-green-500 bg-green-50 ring-2 ring-green-400",
-  },
-  {
-    id: "academy",
-    label: "Football Academy",
-    desc: "I represent an academy and want to showcase our players",
-    icon: <GraduationCap size={24} className="text-purple-600" />,
-    color: "border-purple-200 bg-purple-50 hover:border-purple-400",
-    selectedColor: "border-purple-500 bg-purple-50 ring-2 ring-purple-400",
-  },
-  {
-    id: "club",
-    label: "Football Club",
-    desc: "I'm a club looking to recruit talent",
-    icon: <Building2 size={24} className="text-blue-600" />,
-    color: "border-blue-200 bg-blue-50 hover:border-blue-400",
-    selectedColor: "border-blue-500 bg-blue-50 ring-2 ring-blue-400",
-  },
-  {
-    id: "agent",
-    label: "Football Agent",
-    desc: "I'm a licensed agent scouting talent",
-    icon: <UserCheck size={24} className="text-orange-600" />,
-    color: "border-orange-200 bg-orange-50 hover:border-orange-400",
-    selectedColor: "border-orange-500 bg-orange-50 ring-2 ring-orange-400",
-  },
-];
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const defaultRole = searchParams.get("role") || "";
-
-  const [role, setRole] = useState(defaultRole);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Unified State for all registration fields
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "talent", // default
+    phoneNumber: "",
+    dateOfBirth: "",
+    nin: "",
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role) { setError("Please select your role"); return; }
     setLoading(true);
     setError("");
 
@@ -63,112 +32,69 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify(formData),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        setError(data.error || "Registration failed");
-      } else {
-        router.push(`/dashboard/${role}`);
-        router.refresh();
+        const data = await res.json();
+        throw new Error(data.error || "Registration failed");
       }
-    } catch {
-      setError("Network error. Please try again.");
+
+      router.push("/login");
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm mb-6">
-            ← Back to home
-          </Link>
-          <h1 className="text-3xl font-extrabold text-gray-900">Create Your Free Account</h1>
-          <p className="text-gray-500 mt-2">No credit card required. Start in minutes.</p>
-        </div>
+    <div className="max-w-md mx-auto py-12 px-4">
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Account</h1>
+        
+        {error && (
+          <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          {/* Role Selection */}
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-              I am joining as...
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {ROLES.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRole(r.id)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    role === r.id ? r.selectedColor : r.color
-                  }`}
-                >
-                  <div className="mb-2">{r.icon}</div>
-                  <div className="font-semibold text-gray-900 text-sm">{r.label}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">{r.desc}</div>
-                </button>
-              ))}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="Full Name" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+          <Input label="Email" type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+          <Input label="Password" type="password" required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+          <Input label="Phone Number" type="tel" required value={formData.phoneNumber} onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})} />
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Account Role</label>
+            <Select
+              value={formData.role}
+              onChange={(e) => setFormData({...formData, role: e.target.value})}
+              options={[
+                { value: "talent", label: "Talent" },
+                { value: "academy", label: "Academy" },
+                { value: "club", label: "Club" },
+                { value: "agent", label: "Agent" },
+              ]}
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Full Name / Organisation Name"
-              id="name"
-              type="text"
-              placeholder="e.g. John Doe or FC United"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-            <Input
-              label="Email Address"
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              label="Password"
-              id="password"
-              type="password"
-              placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
+          {/* Conditional Fields for Talent */}
+          {formData.role === "talent" && (
+            <>
+              <Input label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} />
+              <Input label="NIN (National Identity Number)" value={formData.nin} onChange={(e) => setFormData({...formData, nin: e.target.value})} />
+            </>
+          )}
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+          <Button type="submit" loading={loading} className="w-full">
+            Register
+          </Button>
+        </form>
 
-            <Button type="submit" className="w-full" size="lg" loading={loading}>
-              Create Account
-            </Button>
-
-            <p className="text-xs text-center text-gray-500">
-              By registering, you agree to our{" "}
-              <a href="#" className="text-green-600 hover:underline">Terms of Service</a> and{" "}
-              <a href="#" className="text-green-600 hover:underline">Privacy Policy</a>.
-            </p>
-          </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link href="/login" className="text-green-600 font-semibold hover:underline">
-              Sign in
-            </Link>
-          </div>
-        </div>
+        <p className="mt-4 text-center text-sm text-gray-600">
+          Already have an account? <Link href="/login" className="text-green-600 font-semibold">Login</Link>
+        </p>
       </div>
     </div>
   );

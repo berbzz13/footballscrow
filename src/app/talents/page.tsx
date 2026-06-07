@@ -3,14 +3,8 @@ import { useEffect, useState, useCallback } from "react";
 import VideoCard from "@/components/VideoCard";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { POSITIONS } from "@/lib/utils";
-
-const NATIONALITIES = [
-  "Nigeria", "Ghana", "Senegal", "Ivory Coast", "Cameroon", "South Africa",
-  "Egypt", "Morocco", "Kenya", "Ethiopia", "England", "France", "Spain",
-  "Germany", "Brazil", "Argentina", "Portugal", "Netherlands", "Italy",
-];
 
 export default function TalentsPage() {
   const [videos, setVideos] = useState<any[]>([]);
@@ -20,8 +14,9 @@ export default function TalentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
-  const [nationality, setNationality] = useState("");
-  const [interests, setInterests] = useState<Record<string, boolean>>({});
+  // Privacy Rule: Removed nationality/location state
+  
+  const [shortlist, setShortlist] = useState<Record<string, boolean>>({});
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,15 +28,16 @@ export default function TalentsPage() {
       .catch(() => {});
   }, []);
 
+  // Fetch the Shortlist instead of "Interests"
   useEffect(() => {
     if (userRole === "club" || userRole === "agent") {
-      fetch("/api/interests")
+      fetch("/api/shortlists")
         .then((r) => r.json())
         .then((d) => {
-          if (d.interests) {
+          if (d.shortlists) {
             const map: Record<string, boolean> = {};
-            d.interests.forEach((i: any) => { map[i.videoId] = true; });
-            setInterests(map);
+            d.shortlists.forEach((i: any) => { map[i.videoId] = true; });
+            setShortlist(map);
           }
         });
     }
@@ -52,9 +48,8 @@ export default function TalentsPage() {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: "12",
-      ...(search && { search }),
+      ...(search && { search }), // This will now search by uniqueId on the backend
       ...(position && { position }),
-      ...(nationality && { nationality }),
     });
     const res = await fetch(`/api/videos?${params}`);
     const data = await res.json();
@@ -62,47 +57,48 @@ export default function TalentsPage() {
     setTotal(data.total || 0);
     setPages(data.pages || 1);
     setLoading(false);
-  }, [page, search, position, nationality]);
+  }, [page, search, position]);
 
   useEffect(() => {
     fetchVideos();
   }, [fetchVideos]);
 
-  async function handleInterest(videoId: string) {
+  // Handle adding to Shortlist
+  async function handleShortlist(videoId: string) {
     if (!userRole || (userRole !== "club" && userRole !== "agent")) {
       window.location.href = "/login";
       return;
     }
-    await fetch("/api/interests", {
+    await fetch("/api/shortlists", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ videoId }),
     });
-    setInterests((prev) => ({ ...prev, [videoId]: true }));
+    setShortlist((prev) => ({ ...prev, [videoId]: true }));
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900">Browse Talent Videos</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900">Browse Talent Pool</h1>
         <p className="text-gray-500 mt-1">
-          {total} highlight{total !== 1 ? "s" : ""} available
+          {total} talent video{total !== 1 ? "s" : ""} available
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters - Stripped of Location Data */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-8 flex flex-col md:flex-row gap-4">
         <div className="flex items-center gap-2 text-gray-500 shrink-0">
           <SlidersHorizontal size={18} />
           <span className="text-sm font-medium">Filters</span>
         </div>
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Search by name..."
+              placeholder="Search by Unique ID..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -113,16 +109,10 @@ export default function TalentsPage() {
             value={position}
             onChange={(e) => { setPosition(e.target.value); setPage(1); }}
           />
-          <Select
-            options={NATIONALITIES.map((n) => ({ value: n, label: n }))}
-            placeholder="All Nationalities"
-            value={nationality}
-            onChange={(e) => { setNationality(e.target.value); setPage(1); }}
-          />
         </div>
-        {(search || position || nationality) && (
+        {(search || position) && (
           <button
-            onClick={() => { setSearch(""); setPosition(""); setNationality(""); setPage(1); }}
+            onClick={() => { setSearch(""); setPosition(""); setPage(1); }}
             className="text-sm text-red-500 hover:text-red-700 shrink-0 whitespace-nowrap"
           >
             Clear filters
@@ -156,8 +146,8 @@ export default function TalentsPage() {
               key={video.id}
               video={{ ...video, createdAt: video.createdAt }}
               showInterestBtn={userRole === "club" || userRole === "agent"}
-              onInterest={handleInterest}
-              isInterested={interests[video.id]}
+              onInterest={handleShortlist}
+              isInterested={shortlist[video.id]}
             />
           ))}
         </div>

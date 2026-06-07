@@ -8,39 +8,70 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  role      String
-  name      String
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  uniqueId    String   @unique @default(cuid()) // Masks real names for privacy
+  email       String   @unique
+  password    String
+  role        String
+  name        String
+  phoneNumber String?  // Replaces email reliance
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   talentProfile  TalentProfile?
   academyProfile AcademyProfile?
   clubProfile    ClubProfile?
   agentProfile   AgentProfile?
 
+  // Existing Relations
   uploadedVideos   Video[]    @relation("TalentVideos")
   interests        Interest[] @relation("ViewerInterests")
   dealsAsTalent    Deal[]     @relation("TalentDeals")
   dealsAsClubAgent Deal[]     @relation("ClubAgentDeals")
   messages         Message[]
+
+  // New Relations for Academy, Shortlists, and Messaging
+  academyPlayers         Player[]         @relation("AcademyPlayers")
+  shortlists             Shortlist[]      @relation("UserShortlists")
+  shortlistedAsTalent    Shortlist[]      @relation("TalentShortlisted")
+  sentDirectMessages     DirectMessage[]  @relation("SentDirectMessages")
+  receivedDirectMessages DirectMessage[]  @relation("ReceivedDirectMessages")
 }
 
-model TalentProfile {
-  id            String  @id @default(cuid())
-  userId        String  @unique
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+// NEW: Allows Academies to create players without login credentials
+model Player {
+  id            String   @id @default(cuid())
+  uniqueId      String   @unique @default(cuid())
+  name          String   // Real name (Hidden from Clubs/Agents)
   age           Int?
   position      String?
   nationality   String?
-  bio           String?
   height        String?
   weight        String?
   preferredFoot String?
   profileImage  String?
+
+  academyId     String
+  academy       User     @relation("AcademyPlayers", fields: [academyId], references: [id], onDelete: Cascade)
+
+  videos        Video[]
+  deals         Deal[]
+  shortlists    Shortlist[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TalentProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  position    String?
+  age         Int?
+  nationality String?
+  dateOfBirth DateTime? // <-- Added
+  nin         String?   @unique // <-- Added (Marked unique so it can't be used twice)
 }
 
 model AcademyProfile {
@@ -83,8 +114,13 @@ model Video {
   description  String?
   videoUrl     String
   thumbnailUrl String?
-  talentId     String
-  talent       User     @relation("TalentVideos", fields: [talentId], references: [id], onDelete: Cascade)
+
+  // Updates: Video can belong to an independent Talent OR an Academy's Player
+  talentId     String?
+  talent       User?    @relation("TalentVideos", fields: [talentId], references: [id], onDelete: Cascade)
+  playerId     String?
+  player       Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
   views        Int      @default(0)
   duration     String?
   tags         String?
@@ -110,8 +146,13 @@ model Interest {
 
 model Deal {
   id          String   @id @default(cuid())
-  talentId    String
-  talent      User     @relation("TalentDeals", fields: [talentId], references: [id])
+
+  // Updates: Deal can be for an independent Talent OR an Academy's Player
+  talentId    String?
+  talent      User?    @relation("TalentDeals", fields: [talentId], references: [id])
+  playerId    String?
+  player      Player?  @relation(fields: [playerId], references: [id])
+
   clubAgentId String
   clubAgent   User     @relation("ClubAgentDeals", fields: [clubAgentId], references: [id])
   videoId     String?
@@ -135,4 +176,30 @@ model Message {
   content   String
   isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// NEW: Allows Agents and Clubs to save players via their Unique ID
+model Shortlist {
+  id          String   @id @default(cuid())
+  userId      String   
+  user        User     @relation("UserShortlists", fields: [userId], references: [id], onDelete: Cascade)
+
+  talentId    String?  
+  talent      User?    @relation("TalentShortlisted", fields: [talentId], references: [id], onDelete: Cascade)
+  playerId    String?  
+  player      Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+}
+
+// NEW: Facilitates direct communication between Admin, Academies, and Talents outside of deals
+model DirectMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentDirectMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User     @relation("ReceivedDirectMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }

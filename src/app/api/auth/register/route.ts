@@ -1,67 +1,78 @@
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { signToken } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { email, password, name, role } = await req.json();
+    const body = await req.json();
+    const { name, email, password, role, phoneNumber, dateOfBirth, nin } = body;
 
-    if (!email || !password || !name || !role) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+    // 1. Basic Validation
+    if (!name || !email || !password || !role || !phoneNumber) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const validRoles = ["talent", "academy", "club", "agent"];
-    if (!validRoles.includes(role)) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    // 2. Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return NextResponse.json({ error: "Email is already registered" }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+    // Check if NIN is already used (if provided)
+    if (role === "talent" && nin) {
+      const existingNin = await prisma.talentProfile.findUnique({
+        where: { nin }
+      });
+      if (existingNin) {
+        return NextResponse.json({ error: "This NIN is already registered to another account." }, { status: 400 });
+      }
     }
 
-    const hashed = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
+    // 3. Hash Password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 4. Generate Unique ID
+    const uniqueId = `clz${Math.random().toString(36).substring(2, 8)}`;
+
+    // 5. Create User and their specific Profile in one transaction
+    const newUser = await prisma.user.create({
       data: {
-        email,
-        password: hashed,
         name,
+        email,
+        password: hashedPassword,
         role,
+        phoneNumber, // Now required and saved
+        uniqueId,
+        // Create the associated profile based on the role
+        ...(role === "talent" && {
+          talentProfile: {
+            create: {
+              dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+              nin: nin || null,
+            }
+          }
+        }),
+        ...(role === "academy" && {
+          academyProfile: { create: { name } }
+        }),
+        ...(role === "club" && {
+          clubProfile: { create: { name } }
+        }),
+        ...(role === "agent" && {
+          agentProfile: { create: {} }
+        }),
       },
     });
 
-    // Create role-specific profile
-    if (role === "talent") {
-      await prisma.talentProfile.create({ data: { userId: user.id } });
-    } else if (role === "academy") {
-      await prisma.academyProfile.create({ data: { userId: user.id } });
-    } else if (role === "club") {
-      await prisma.clubProfile.create({ data: { userId: user.id } });
-    } else if (role === "agent") {
-      await prisma.agentProfile.create({ data: { userId: user.id } });
-    }
-
-    const token = await signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-
-    const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    });
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
-
-    return response;
-  } catch {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Account created successfully", user: { id: newUser.id, email: newUser.email, role: newUser.role } },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error("Registration error:", error);
+    return NextResponse.json({ error: "Internal server error during registration" }, { status: 500 });
   }
 }
