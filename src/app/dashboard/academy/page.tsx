@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+ HEAD
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -16,6 +17,20 @@ type Player = {
 
 export default function AcademyDashboard() {
   const router = useRouter();
+
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+type Player = {
+  id: string;
+  uniqueId: string;
+  name: string;
+  position: string | null;
+  age: number | null;
+  videos: any[];
+};
+
+export default function AcademyDashboard() {
+>>>>>>> 3e524e80d3fd72c0bd33c359df7df292b7119489
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -143,7 +158,11 @@ export default function AcademyDashboard() {
                   </span>
                 </div>
               </div>
+ HEAD
 
+
+              
+ 3e524e80d3fd72c0bd33c359df7df292b7119489
               <div className="space-y-2 text-sm text-gray-600">
                 <p><span className="font-medium text-gray-900">Age:</span> {player.age || "N/A"}</p>
                 <p><span className="font-medium text-gray-900">Position:</span> {player.position || "N/A"}</p>
@@ -151,12 +170,16 @@ export default function AcademyDashboard() {
               </div>
 
               <div className="mt-6 pt-4 border-t">
+ HEAD
                 {/* BUTTON IS NOW CLICKABLE AND ROUTES TO PLAYER'S PAGE */}
                 <Button 
                   onClick={() => router.push(`/dashboard/academy/player/${player.id}`)}
                   variant="outline" 
                   className="w-full text-sm"
                 >
+
+                <Button variant="outline" className="w-full text-sm">
+ 3e524e80d3fd72c0bd33c359df7df292b7119489
                   Manage Videos & Profile
                 </Button>
               </div>
