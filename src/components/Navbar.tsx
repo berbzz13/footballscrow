@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Menu, X, Trophy, User, LogOut, LayoutDashboard } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Trophy, LogOut, LayoutDashboard, MessageSquare } from "lucide-react";
 
 interface NavbarProps {
   user?: { name: string; role: string; email: string } | null;
@@ -11,6 +11,21 @@ interface NavbarProps {
 export default function Navbar({ user }: NavbarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread messages count if the user is allowed to use direct messages
+  useEffect(() => {
+    if (user && user.role !== "agent" && user.role !== "club") {
+      fetch("/api/messages/unread")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.unreadCount !== undefined) {
+            setUnreadCount(d.unreadCount);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -24,6 +39,9 @@ export default function Navbar({ user }: NavbarProps) {
       : user?.role
       ? `/dashboard/${user.role}`
       : "/login";
+
+  // Check if user is allowed to see messages
+  const canMessage = user && user.role !== "agent" && user.role !== "club";
 
   return (
     <nav className="bg-gray-900 text-white shadow-lg sticky top-0 z-50">
@@ -48,7 +66,21 @@ export default function Navbar({ user }: NavbarProps) {
               How It Works
             </Link>
             {user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
+                {canMessage && (
+                  <Link
+                    href="/dashboard/messages"
+                    className="relative flex items-center text-gray-300 hover:text-white transition-colors"
+                    title="Messages"
+                  >
+                    <MessageSquare size={20} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                )}
                 <Link
                   href={dashboardHref}
                   className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm transition-colors"
@@ -56,7 +88,7 @@ export default function Navbar({ user }: NavbarProps) {
                   <LayoutDashboard size={16} />
                   Dashboard
                 </Link>
-                <div className="flex items-center gap-2 bg-gray-800 rounded-full px-3 py-1.5">
+                <div className="flex items-center gap-2 bg-gray-800 rounded-full px-3 py-1.5 ml-2">
                   <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center text-xs font-bold">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -111,6 +143,18 @@ export default function Navbar({ user }: NavbarProps) {
           </Link>
           {user ? (
             <>
+              {canMessage && (
+                <Link href="/dashboard/messages" className="flex items-center justify-between text-gray-300 hover:text-white text-sm py-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={16} /> Messages
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {unreadCount} New
+                    </span>
+                  )}
+                </Link>
+              )}
               <Link href={dashboardHref} className="flex items-center gap-2 text-gray-300 hover:text-white text-sm py-2">
                 <LayoutDashboard size={16} /> Dashboard
               </Link>

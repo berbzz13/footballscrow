@@ -1,114 +1,160 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { Eye, Heart, Video, TrendingUp, Plus } from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import Link from "next/link";
-import ProfileForm from "../talent/ProfileForm";
-import VideoUploadForm from "../talent/VideoUploadForm";
-import DeleteVideoButton from "../talent/DeleteVideoButton";
+"use client";
 
-export default async function AcademyDashboard() {
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.role !== "academy") redirect("/login");
+import { useState, useEffect } from "react";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+type Player = {
+  id: string;
+  uniqueId: string;
+  name: string;
+  position: string | null;
+  age: number | null;
+  videos: any[];
+};
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: { academyProfile: true },
+export default function AcademyDashboard() {
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  // Form State
+  const [newPlayer, setNewPlayer] = useState({
+    name: "",
+    age: "",
+    position: "",
+    nationality: "",
   });
 
-  const videos = await prisma.video.findMany({
-    where: { talentId: session.userId },
-    include: { _count: { select: { interests: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  // Fetch players on load
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
 
-  const deals = await prisma.deal.findMany({
-    where: { talentId: session.userId },
-    include: {
-      clubAgent: { select: { name: true, role: true } },
-      video: { select: { title: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-  });
+  const fetchPlayers = async () => {
+    try {
+      const res = await fetch("/api/academy/players");
+      if (!res.ok) throw new Error("Failed to load roster");
+      const data = await res.json();
+      setPlayers(data.players || []);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalViews = videos.reduce((sum, v) => sum + v.views, 0);
-  const totalInterests = videos.reduce((sum, v) => sum + v._count.interests, 0);
+  const handleAddPlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAdding(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/academy/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newPlayer),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to add player");
+      }
+
+      // Reset form and refresh list
+      setNewPlayer({ name: "", age: "", position: "", nationality: "" });
+      fetchPlayers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading roster...</div>;
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900">Academy Dashboard</h1>
-        <p className="text-gray-500 mt-1">{user?.name}</p>
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
+      <div className="flex justify-between items-center border-b pb-4">
+        <h1 className="text-3xl font-bold text-gray-900">Academy Roster</h1>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        {[
-          { icon: <Video size={20} className="text-green-600" />, label: "Videos", value: videos.length },
-          { icon: <Eye size={20} className="text-blue-600" />, label: "Total Views", value: totalViews },
-          { icon: <Heart size={20} className="text-red-500" />, label: "Interests", value: totalInterests },
-          { icon: <TrendingUp size={20} className="text-purple-600" />, label: "Active Deals", value: deals.filter(d => ["pending","in_negotiation","agreed"].includes(d.status)).length },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-200 p-5 flex items-center gap-4">
-            <div className="p-3 bg-gray-50 rounded-xl">{s.icon}</div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">{s.value}</div>
-              <div className="text-xs text-gray-500">{s.label}</div>
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {/* Add Player Section */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-xl font-semibold mb-4">Add New Player</h2>
+        <form onSubmit={handleAddPlayer} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Real Name *</label>
+            <Input
+              required
+              value={newPlayer.name}
+              onChange={(e) => setNewPlayer({ ...newPlayer, name: e.target.value })}
+              placeholder="e.g. John Doe"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Age</label>
+            <Input
+              type="number"
+              value={newPlayer.age}
+              onChange={(e) => setNewPlayer({ ...newPlayer, age: e.target.value })}
+              placeholder="e.g. 18"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Position</label>
+            <Input
+              value={newPlayer.position}
+              onChange={(e) => setNewPlayer({ ...newPlayer, position: e.target.value })}
+              placeholder="e.g. Striker"
+            />
+          </div>
+          <Button type="submit" loading={isAdding} className="w-full h-10">
+            Add Player
+          </Button>
+        </form>
+      </div>
+
+      {/* Player List Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {players.length === 0 ? (
+          <div className="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed">
+            No players added yet. Add your first talent above.
+          </div>
+        ) : (
+          players.map((player) => (
+            <div key={player.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{player.name}</h3>
+                  <span className="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-mono rounded">
+                    ID: {player.uniqueId}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2 text-sm text-gray-600">
+                <p><span className="font-medium text-gray-900">Age:</span> {player.age || "N/A"}</p>
+                <p><span className="font-medium text-gray-900">Position:</span> {player.position || "N/A"}</p>
+                <p><span className="font-medium text-gray-900">Videos:</span> {player.videos?.length || 0} uploaded</p>
+              </div>
+
+              <div className="mt-6 pt-4 border-t">
+                <Button variant="outline" className="w-full text-sm">
+                  Manage Videos & Profile
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Plus size={20} className="text-green-600" /> Upload Player Video
-            </h2>
-            <VideoUploadForm />
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Uploaded Videos ({videos.length})</h2>
-            {videos.length === 0 ? (
-              <div className="text-center py-10 text-gray-400">
-                <Video size={40} className="mx-auto mb-3 opacity-30" />
-                <p>No videos yet. Upload your first player highlight!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {videos.map((video) => (
-                  <div key={video.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 group">
-                    <div className="w-20 h-12 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                      {video.thumbnailUrl ? (
-                        <img src={video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">⚽</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/videos/${video.id}`} className="font-semibold text-gray-900 hover:text-green-600 text-sm truncate block">{video.title}</Link>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
-                        <span className="flex items-center gap-1"><Eye size={11} />{video.views}</span>
-                        <span className="flex items-center gap-1"><Heart size={11} />{video._count.interests}</span>
-                      </div>
-                    </div>
-                    <DeleteVideoButton videoId={video.id} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Academy Profile</h2>
-            <ProfileForm user={user} role="academy" />
-          </div>
-        </div>
+          ))
+        )}
       </div>
     </div>
   );

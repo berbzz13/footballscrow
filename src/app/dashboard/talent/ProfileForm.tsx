@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { POSITIONS } from "@/lib/utils";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Lock } from "lucide-react";
 
 interface ProfileFormProps {
   user: any;
@@ -20,7 +20,13 @@ export default function ProfileForm({ user, role }: ProfileFormProps) {
   const [bio, setBio] = useState(profile?.bio || "");
   const [position, setPosition] = useState(profile?.position || "");
   const [nationality, setNationality] = useState(profile?.nationality || "");
-  const [age, setAge] = useState(profile?.age?.toString() || "");
+  
+  // Extract and format the date of birth for the input field
+  const [dateOfBirth, setDateOfBirth] = useState(
+    profile?.dateOfBirth ? new Date(profile.dateOfBirth).toISOString().split('T')[0] : ""
+  );
+  const [nin, setNin] = useState(profile?.nin || "");
+  
   const [height, setHeight] = useState(profile?.height || "");
   const [preferredFoot, setPreferredFoot] = useState(profile?.preferredFoot || "");
   const [location, setLocation] = useState(profile?.location || "");
@@ -37,7 +43,8 @@ export default function ProfileForm({ user, role }: ProfileFormProps) {
     if (role === "talent") {
       formData.append("position", position);
       formData.append("nationality", nationality);
-      formData.append("age", age);
+      formData.append("dateOfBirth", dateOfBirth);
+      formData.append("nin", nin);
       formData.append("height", height);
       formData.append("preferredFoot", preferredFoot);
     } else if (role === "academy") {
@@ -66,10 +73,19 @@ export default function ProfileForm({ user, role }: ProfileFormProps) {
             onChange={(e) => setPosition(e.target.value)}
           />
           <Input label="Nationality" id="nationality" placeholder="e.g. Nigerian" value={nationality} onChange={(e) => setNationality(e.target.value)} />
+          
           <div className="grid grid-cols-2 gap-2">
-            <Input label="Age" id="age" type="number" min="10" max="60" value={age} onChange={(e) => setAge(e.target.value)} />
+            <Input label="Date of Birth" id="dateOfBirth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
             <Input label="Height (cm)" id="height" placeholder="e.g. 180cm" value={height} onChange={(e) => setHeight(e.target.value)} />
           </div>
+
+          <div className="space-y-1">
+            <Input label="NIN (National Identity Number)" id="nin" placeholder="Enter your 11-digit NIN" value={nin} onChange={(e) => setNin(e.target.value)} />
+            <p className="text-[10px] text-gray-500 flex items-center gap-1">
+              <Lock size={10} /> Securely stored for identity verification to prevent age falsification.
+            </p>
+          </div>
+
           <Select
             label="Preferred Foot"
             id="preferredFoot"
@@ -108,3 +124,4 @@ export default function ProfileForm({ user, role }: ProfileFormProps) {
     </form>
   );
 }
+
