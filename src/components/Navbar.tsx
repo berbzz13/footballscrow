@@ -59,7 +59,7 @@ export default function Navbar({ user }: NavbarProps) {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/talents" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link href="/dashboard/agent/browse" className="text-gray-300 hover:text-white text-sm transition-colors">
               Browse Talents
             </Link>
             <Link href="/how-it-works" className="text-gray-300 hover:text-white text-sm transition-colors">
@@ -135,7 +135,7 @@ export default function Navbar({ user }: NavbarProps) {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden bg-gray-800 border-t border-gray-700 px-4 py-4 space-y-3">
-          <Link href="/talents" className="block text-gray-300 hover:text-white text-sm py-2">
+          <Link href="/dashboard/agent/browse" className="block text-gray-300 hover:text-white text-sm py-2">
             Browse Talents
           </Link>
           <Link href="/how-it-works" className="block text-gray-300 hover:text-white text-sm py-2">

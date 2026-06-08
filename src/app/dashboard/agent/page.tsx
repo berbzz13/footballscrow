@@ -49,7 +49,8 @@ export default async function AgentDashboard() {
           <h1 className="text-3xl font-extrabold text-gray-900">Agent Dashboard</h1>
           <p className="text-gray-500 mt-1">{user?.name}</p>
         </div>
-        <Link href="/talents" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+        {/* FIX 1: Updated the top header button link */}
+        <Link href="/dashboard/agent/browse" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
           <Search size={16} /> Browse Talents
         </Link>
       </div>
@@ -78,7 +79,8 @@ export default async function AgentDashboard() {
               <div className="text-center py-10 text-gray-400">
                 <Handshake size={40} className="mx-auto mb-3 opacity-30" />
                 <p>No deals yet.</p>
-                <Link href="/talents" className="text-green-600 text-sm font-semibold hover:underline mt-2 block">Browse Talents →</Link>
+                {/* FIX 2: Updated the fallback text link */}
+                <Link href="/dashboard/agent/browse" className="text-green-600 text-sm font-semibold hover:underline mt-2 block">Browse Talents →</Link>
               </div>
             ) : (
               <div className="space-y-4">

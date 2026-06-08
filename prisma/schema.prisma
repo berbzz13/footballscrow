@@ -66,7 +66,7 @@ model Player {
 model TalentProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   position    String?
   age         Int?
   nationality String?
@@ -149,14 +149,14 @@ model Deal {
 
   // Updates: Deal can be for an independent Talent OR an Academy's Player
   talentId    String?
-  talent      User?    @relation("TalentDeals", fields: [talentId], references: [id])
+  talent      User?    @relation("TalentDeals", fields: [talentId], references: [id], onDelete: Cascade)
   playerId    String?
-  player      Player?  @relation(fields: [playerId], references: [id])
+  player      Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   clubAgentId String
-  clubAgent   User     @relation("ClubAgentDeals", fields: [clubAgentId], references: [id])
+  clubAgent   User     @relation("ClubAgentDeals", fields: [clubAgentId], references: [id], onDelete: Cascade)
   videoId     String?
-  video       Video?   @relation(fields: [videoId], references: [id])
+  video       Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
   status      String   @default("pending")
   dealType    String?
   proposedFee String?
@@ -172,7 +172,7 @@ model Message {
   dealId    String
   deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   senderId  String
-  sender    User     @relation(fields: [senderId], references: [id])
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   content   String
   isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -181,12 +181,12 @@ model Message {
 // NEW: Allows Agents and Clubs to save players via their Unique ID
 model Shortlist {
   id          String   @id @default(cuid())
-  userId      String   
+  userId      String
   user        User     @relation("UserShortlists", fields: [userId], references: [id], onDelete: Cascade)
 
-  talentId    String?  
+  talentId    String?
   talent      User?    @relation("TalentShortlisted", fields: [talentId], references: [id], onDelete: Cascade)
-  playerId    String?  
+  playerId    String?
   player      Player?  @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   createdAt   DateTime @default(now())
