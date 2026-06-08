@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import Button  from "@/components/ui/Button";
+import  Input  from "@/components/ui/Input";
 import { ShieldAlert, Send, Lock } from "lucide-react";
 
 type User = {
