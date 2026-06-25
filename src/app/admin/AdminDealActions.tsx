@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Send, ChevronDown, ChevronUp } from "lucide-react";
 import { DEAL_STATUS_LABELS, DEAL_STATUS_COLORS, formatTimeAgo } from "@/lib/utils";
 
@@ -12,7 +11,8 @@ interface Deal {
   proposedFee?: string | null;
   adminNotes?: string | null;
   createdAt: string | Date;
-  talent: { id: string; name: string; talentProfile?: any };
+  talent?: { id: string; name: string; talentProfile?: any } | null;
+  player?: { id: string; name: string } | null;
   clubAgent: { id: string; name: string; role: string };
   video?: { id: string; title: string } | null;
   messages: Array<{
@@ -33,6 +33,8 @@ export default function AdminDealActions({ deal, adminId }: { deal: Deal; adminI
   const [adminNotes, setAdminNotes] = useState(deal.adminNotes || "");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const targetName = deal.talent?.name ?? deal.player?.name ?? "Unknown Profile";
 
   async function handleUpdate() {
     setLoading(true);
@@ -55,7 +57,7 @@ export default function AdminDealActions({ deal, adminId }: { deal: Deal; adminI
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-gray-900">{deal.talent.name}</span>
+            <span className="font-semibold text-gray-900">{targetName}</span>
             <span className="text-gray-400">←→</span>
             <span className="font-semibold text-gray-900">{deal.clubAgent.name}</span>
             <span className="text-xs text-gray-500 capitalize">({deal.clubAgent.role})</span>
@@ -79,16 +81,10 @@ export default function AdminDealActions({ deal, adminId }: { deal: Deal; adminI
 
       {expanded && (
         <div className="mt-4 space-y-4 border-t border-gray-200 pt-4">
-          {/* Messages */}
           {deal.messages.length > 0 && (
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {deal.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-2.5 rounded-lg text-xs ${
-                    msg.isAdmin ? "bg-blue-50 border border-blue-100" : "bg-gray-50"
-                  }`}
-                >
+                <div key={msg.id} className={`p-2.5 rounded-lg text-xs ${msg.isAdmin ? "bg-blue-50 border border-blue-100" : "bg-gray-50"}`}>
                   <div className="flex items-center gap-1 mb-1">
                     <span className="font-semibold">{msg.isAdmin ? "🔒 You (Admin)" : msg.sender.name}</span>
                     <span className="text-gray-400">· {formatTimeAgo(msg.createdAt)}</span>
@@ -98,49 +94,23 @@ export default function AdminDealActions({ deal, adminId }: { deal: Deal; adminI
               ))}
             </div>
           )}
-
-          {/* Status Update */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Update Status</label>
-              <select
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>{DEAL_STATUS_LABELS[s] || s}</option>
-                ))}
+              <select className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none" value={status} onChange={(e) => setStatus(e.target.value)}>
+                {STATUSES.map((s) => <option key={s} value={s}>{DEAL_STATUS_LABELS[s] || s}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Admin Notes</label>
-              <input
-                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={adminNotes}
-                onChange={(e) => setAdminNotes(e.target.value)}
-                placeholder="Internal notes..."
-              />
+              <input className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Internal notes..." />
             </div>
           </div>
-
-          {/* Send Message */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Send Message to Parties (both talent & club/agent will see this)
-            </label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Send Message to Parties</label>
             <div className="flex gap-2">
-              <input
-                className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Type an update or request..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <button
-                onClick={handleUpdate}
-                disabled={loading}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
-              >
+              <input className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Type an update or request..." value={message} onChange={(e) => setMessage(e.target.value)} />
+              <button onClick={handleUpdate} disabled={loading} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
                 <Send size={14} />
                 {loading ? "..." : "Update"}
               </button>

@@ -13,19 +13,23 @@ export default function Navbar({ user }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch unread messages count if the user is allowed to use direct messages
+  const userRole = user?.role ? String(user.role).trim().toLowerCase() : null;
+
   useEffect(() => {
-    if (user && user.role !== "agent" && user.role !== "club") {
+    if (user && userRole !== "agent" && userRole !== "club") {
       fetch("/api/messages/unread")
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error("Route missing");
+          return r.json();
+        })
         .then((d) => {
-          if (d.unreadCount !== undefined) {
+          if (d && d.unreadCount !== undefined) {
             setUnreadCount(d.unreadCount);
           }
         })
         .catch(() => {});
     }
-  }, [user]);
+  }, [user, userRole]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -34,20 +38,18 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   const dashboardHref =
-    user?.role === "admin"
+    userRole === "admin"
       ? "/admin"
-      : user?.role
-      ? `/dashboard/${user.role}`
+      : userRole
+      ? `/dashboard/${userRole}`
       : "/login";
 
-  // Check if user is allowed to see messages
-  const canMessage = user && user.role !== "agent" && user.role !== "club";
+  const canMessage = user && userRole !== "agent" && userRole !== "club";
 
   return (
     <nav className="bg-gray-900 text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <div className="bg-green-500 p-1.5 rounded-lg">
               <Trophy size={20} className="text-white" />
@@ -57,9 +59,8 @@ export default function Navbar({ user }: NavbarProps) {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
-            <Link href="/dashboard/agent/browse" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link href="/talents" className="text-gray-300 hover:text-white text-sm transition-colors">
               Browse Talents
             </Link>
             <Link href="/how-it-works" className="text-gray-300 hover:text-white text-sm transition-colors">
@@ -71,7 +72,6 @@ export default function Navbar({ user }: NavbarProps) {
                   <Link
                     href="/dashboard/messages"
                     className="relative flex items-center text-gray-300 hover:text-white transition-colors"
-                    title="Messages"
                   >
                     <MessageSquare size={20} />
                     {unreadCount > 0 && (
@@ -94,7 +94,7 @@ export default function Navbar({ user }: NavbarProps) {
                   </div>
                   <span className="text-sm text-gray-200">{user.name.split(" ")[0]}</span>
                   <span className="text-xs text-green-400 capitalize bg-green-900/40 px-1.5 py-0.5 rounded">
-                    {user.role}
+                    {userRole || user.role}
                   </span>
                 </div>
                 <button
@@ -106,76 +106,41 @@ export default function Navbar({ user }: NavbarProps) {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <Link
-                  href="/login"
-                  className="text-gray-300 hover:text-white text-sm transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-colors"
-                >
-                  Register Free
-                </Link>
+                <Link href="/login" className="text-gray-300 hover:text-white text-sm transition-colors">Login</Link>
+                <Link href="/register" className="bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-semibold transition-colors">Register Free</Link>
               </div>
             )}
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            className="md:hidden text-gray-300 hover:text-white"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
+          <button className="md:hidden text-gray-300 hover:text-white" onClick={() => setMobileOpen(!mobileOpen)}>
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden bg-gray-800 border-t border-gray-700 px-4 py-4 space-y-3">
-          <Link href="/dashboard/agent/browse" className="block text-gray-300 hover:text-white text-sm py-2">
-            Browse Talents
-          </Link>
-          <Link href="/how-it-works" className="block text-gray-300 hover:text-white text-sm py-2">
-            How It Works
-          </Link>
+          <Link href="/talents" className="block text-gray-300 hover:text-white text-sm py-2">Browse Talents</Link>
+          <Link href="/how-it-works" className="block text-gray-300 hover:text-white text-sm py-2">How It Works</Link>
           {user ? (
             <>
               {canMessage && (
                 <Link href="/dashboard/messages" className="flex items-center justify-between text-gray-300 hover:text-white text-sm py-2">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare size={16} /> Messages
-                  </div>
-                  {unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      {unreadCount} New
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2"><MessageSquare size={16} /> Messages</div>
+                  {unreadCount > 0 && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{unreadCount} New</span>}
                 </Link>
               )}
               <Link href={dashboardHref} className="flex items-center gap-2 text-gray-300 hover:text-white text-sm py-2">
                 <LayoutDashboard size={16} /> Dashboard
               </Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-red-400 hover:text-red-300 text-sm py-2 w-full"
-              >
+              <button onClick={handleLogout} className="flex items-center gap-2 text-red-400 hover:text-red-300 text-sm py-2 w-full">
                 <LogOut size={16} /> Logout
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" className="block text-gray-300 hover:text-white text-sm py-2">
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="block bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-semibold text-center"
-              >
-                Register Free
-              </Link>
+              <Link href="/login" className="block text-gray-300 hover:text-white text-sm py-2">Login</Link>
+              <Link href="/register" className="block bg-green-600 hover:bg-green-500 text-white text-sm px-4 py-2 rounded-lg font-semibold text-center">Register Free</Link>
             </>
           )}
         </div>

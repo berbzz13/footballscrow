@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Users, Video, Handshake, CheckCircle, AlertCircle } from "lucide-react";
-import { formatDate, DEAL_STATUS_LABELS, DEAL_STATUS_COLORS } from "@/lib/utils";
+import { Users, Handshake, CheckCircle, AlertCircle } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 import AdminDealActions from "./AdminDealActions";
 import AdminUserActions from "./AdminUserActions";
 
@@ -11,15 +11,7 @@ export default async function AdminPage() {
   if (!session || session.role !== "admin") redirect("/login");
 
   const [
-    totalUsers,
-    talents,
-    clubs,
-    agents,
-    academies,
-    videos,
-    pendingDeals,
-    allDeals,
-    recentUsers,
+    totalUsers, talents, clubs, agents, academies, videos, pendingDeals, allDeals, recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "talent" } }),
@@ -31,6 +23,7 @@ export default async function AdminPage() {
     prisma.deal.findMany({
       include: {
         talent: { select: { id: true, name: true, talentProfile: true } },
+        player: { select: { id: true, name: true } },
         clubAgent: { select: { id: true, name: true, role: true } },
         video: { select: { id: true, title: true } },
         messages: {
@@ -61,7 +54,6 @@ export default async function AdminPage() {
         <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1.5 rounded-full">ADMIN</span>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {[
           { label: "Total Users", value: totalUsers, sub: `${talents} talents · ${clubs} clubs · ${agents} agents · ${academies} academies`, color: "text-blue-600" },
@@ -77,7 +69,6 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      {/* Pending Deals Alert */}
       {pendingDeals > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-8 flex items-center gap-3">
           <AlertCircle size={20} className="text-yellow-600 shrink-0" />
@@ -88,30 +79,19 @@ export default async function AdminPage() {
       )}
 
       <div className="space-y-8">
-        {/* Deals Management */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Handshake size={22} className="text-blue-600" /> Deal Management
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Handshake size={22} className="text-blue-600" /> Deal Management</h2>
           {allDeals.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
-              <Handshake size={40} className="mx-auto mb-3 opacity-30" />
-              <p>No deals yet.</p>
-            </div>
+            <div className="text-center py-10 text-gray-400"><Handshake size={40} className="mx-auto mb-3 opacity-30" /><p>No deals yet.</p></div>
           ) : (
             <div className="space-y-4">
-              {allDeals.map((deal) => (
-                <AdminDealActions key={deal.id} deal={deal} adminId={session.userId} />
-              ))}
+              {allDeals.map((deal) => <AdminDealActions key={deal.id} deal={deal as any} adminId={session.userId} />)}
             </div>
           )}
         </div>
 
-        {/* Users Management */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Users size={22} className="text-green-600" /> Recent Users
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Users size={22} className="text-green-600" /> Recent Users</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -129,27 +109,10 @@ export default async function AdminPage() {
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="py-3 font-medium text-gray-900">{user.name}</td>
                     <td className="py-3 text-gray-500">{user.email}</td>
-                    <td className="py-3">
-                      <span className={`capitalize text-xs px-2 py-0.5 rounded-full font-medium ${
-                        user.role === "talent" ? "bg-green-100 text-green-700" :
-                        user.role === "club" ? "bg-blue-100 text-blue-700" :
-                        user.role === "agent" ? "bg-orange-100 text-orange-700" :
-                        "bg-purple-100 text-purple-700"
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
+                    <td className="py-3"><span className={`capitalize text-xs px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-700`}>{user.role}</span></td>
                     <td className="py-3 text-gray-500 text-xs">{formatDate(user.createdAt)}</td>
-                    <td className="py-3">
-                      {user.verified ? (
-                        <span className="flex items-center gap-1 text-green-600 text-xs"><CheckCircle size={14} /> Verified</span>
-                      ) : (
-                        <span className="text-yellow-600 text-xs">Unverified</span>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      <AdminUserActions userId={user.id} verified={user.verified} />
-                    </td>
+                    <td className="py-3">{user.verified ? <span className="flex items-center gap-1 text-green-600 text-xs"><CheckCircle size={14} /> Verified</span> : <span className="text-yellow-600 text-xs">Unverified</span>}</td>
+                    <td className="py-3"><AdminUserActions userId={user.id} verified={user.verified} /></td>
                   </tr>
                 ))}
               </tbody>
